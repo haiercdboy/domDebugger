@@ -1,0 +1,16 @@
+{
+  "name": "Dom Debugger",
+  "description": "add breakpoint to the dom listeners",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "contextMenus", "scripting", "webNavigation", "debugger"],
+  "host_permissions": ["*://*/*"],
+  "background": {
+    "service_worker": "domDebugger.js"
+  },
+  "manifest_version": 3,
+  "icons": {
+    "16": "debugIcon16.png",
+    "48": "debugIcon48.png",
+    "128": "debugIcon128.png"
+  }
+}
