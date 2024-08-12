@@ -2,11 +2,18 @@
   "name": "Dom Debugger",
   "description": "add breakpoint to the dom listeners",
   "version": "0.1.0",
-  "permissions": ["activeTab", "contextMenus", "scripting", "webNavigation", "debugger"],
+  "permissions": ["activeTab", "contextMenus", "scripting"],
   "host_permissions": ["*://*/*"],
   "background": {
     "service_worker": "domDebugger.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["findDomListeners.js"]
+    }
+  ],
+  "devtools_page": "devtools.html",
   "manifest_version": 3,
   "icons": {
     "16": "debugIcon16.png",
