@@ -15,13 +15,7 @@ const getListeners = (node, unAddBreakPoint) => {
       { action: 'getNodeListeners', node: isElementNode ? node : nodeId, unAddBreakPoint, isElementNode },
       (response) => {
         genId && node.removeAttribute('id');
-        if (response?.isException) {
-          console.warn('dom debugger', response);
-          reject(response);
-        }
-        else {
-          resolve(response);
-        }
+        response?.isException ? reject(response) : resolve(response);
       }
     );
   });
