@@ -1,20 +1,21 @@
 
 chrome.devtools.inspectedWindow.eval(
   `
-    let _debug__node;
-    let _debug__listeners;
-    let _debug__keys;
-    let _debug__unAddBreakPoint;
     let _debug__undebugs = [];
   `
 );
-function getListeners(nodeId, unAddBreakPoint, isElementNode) {
+function getListeners(node, unAddBreakPoint, isElementNode) {
   return new Promise((resolve, reject) => {
     chrome.devtools.inspectedWindow.eval(
       `
-        _debug__node = ${isElementNode} ? $0 : document.getElementById('${nodeId}');
+        var _debug__node;
+        var _debug__listeners;
+        var _debug__keys;
+        var _debug__unAddBreakPoint;
+        console.log('dom debugger node', '${node}');
+        _debug__node = ${isElementNode} ? ${node} : document.getElementById('${node}');
         _debug__listeners = getEventListeners(_debug__node);
-        _debug__keys = Object.keys(_debug__listeners);
+        _debug__keys = _debug__listeners ? Object.keys(_debug__listeners) : [];
         _debug__unAddBreakPoint = ${unAddBreakPoint};
         !_debug__unAddBreakPoint && _debug__keys.forEach(evt => {
           let fn;
@@ -27,6 +28,7 @@ function getListeners(nodeId, unAddBreakPoint, isElementNode) {
           debug(fn);
           _debug__undebugs.push(() => undebug(fn));
         });
+        console.log('dom debugger _debug__keys', _debug__keys, _debug__node);
         _debug__keys
       `,
       (result, isException) => {
@@ -39,24 +41,25 @@ function getListeners(nodeId, unAddBreakPoint, isElementNode) {
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   switch (request.action) {
     case 'getNodeListeners':
-      const nodeId = request.nodeId;
+      const node = request.node;
       const unAddBreakPoint = request.unAddBreakPoint;
       const isElementNode = request.isElementNode;
-      getListeners(nodeId, unAddBreakPoint, isElementNode)
+      getListeners(node, unAddBreakPoint, isElementNode)
         .then((listeners) => {
-          sendResponse(listeners.length ? listeners : []);
+          sendResponse(listeners ?? []);
         })
-        .catch(() => {
-          sendResponse([]);
+        .catch(err => {
+          sendResponse(err);
         });
       break;
     case 'removeBreakPoint':
       chrome.devtools.inspectedWindow.eval(
         `
-          _debug__keys = { length: _debug__undebugs.length };
+          var _debug__keys = new Array(_debug__undebugs.length);
+          console.log('dom debugger _debug__keys', _debug__keys, _debug__undebugs);
           _debug__undebugs.forEach(cancel => cancel());
           _debug__undebugs = [];
-          _debug__keys
+          _debug__keys ?? []
         `,
         sendResponse,
       );

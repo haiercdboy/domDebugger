@@ -1,22 +1,27 @@
 const generateId = () => Math.floor(Math.random() * 0xffffff).toString(16);
 const getListeners = (node, unAddBreakPoint) => {
-  return new Promise((resolve) => {
-    let isElementNode = node === '$0';
+  return new Promise((resolve, reject) => {
+    let isElementNode = typeof node === 'string';
     let nodeId;
-    let hasId;
+    let genId;
     if (!isElementNode) {
       nodeId = node.id;
-      hasId = !!nodeId;
-      if (!hasId) {
-        nodeId = node.id = `_debug__${generateId()}`;
+      if (!nodeId) {
+        genId = nodeId = node.id = `_debug__${generateId()}`;
       }
     }
 
     chrome.runtime.sendMessage(
-      { action: 'getNodeListeners', nodeId, unAddBreakPoint, isElementNode },
+      { action: 'getNodeListeners', node: isElementNode ? node : nodeId, unAddBreakPoint, isElementNode },
       (response) => {
-        !isElementNode && !hasId && node.removeAttribute('id');
-        resolve(response);
+        genId && node.removeAttribute('id');
+        if (response?.isException) {
+          console.warn('dom debugger', response);
+          reject(response);
+        }
+        else {
+          resolve(response);
+        }
       }
     );
   });
@@ -31,7 +36,7 @@ const log = (msg, ...options) => {
   );
 }
 const findListeners = async (node, unAddBreakPoint) => {
-  let isElementNode = node === '$0';
+  let isElementNode = typeof node === 'string';
   if (!node || node.nodeName === 'BODY' || node.nodeName === 'HTML') {
     log('0 listener found');
     return;
@@ -51,7 +56,7 @@ const findListeners = async (node, unAddBreakPoint) => {
         listeners,
         node,
       )
-      : log(`Breakpoint added to '${isElementNode ? "$0" : node.nodeName}' on '${listeners}' event`);
+      : log(`Breakpoint added to '${isElementNode ? node : node.nodeName}' on '${listeners}' event`);
   }
 };
 
