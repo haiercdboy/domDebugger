@@ -44,13 +44,14 @@ const findListeners = async (node, unAddBreakPoint) => {
     }
     log('0 listener found');
   } else if (listeners.length) {
+    let nodeName = isElementNode ? node : node.nodeName;
     unAddBreakPoint
       ? log(
-        `${listeners.length} ${listeners.length > 1 ? 'listeners' : 'listener'} found on ${node.nodeName}`,
+        `${listeners.length} ${listeners.length > 1 ? 'events' : 'event'} found on ${nodeName}`,
         listeners,
         node,
       )
-      : log(`Breakpoint added to '${isElementNode ? node : node.nodeName}' on '${listeners}' event`);
+      : log(`Breakpoint added to '${nodeName}' on '${listeners}' event`);
   }
 };
 
@@ -69,6 +70,9 @@ chrome.runtime.onMessage.addListener(function (request) {
       break;
     case 'addBreakPointOnElement':
       findListeners('$0');
+      break;
+    case 'viewListenersOnElement':
+      findListeners('$0', true);
       break;
     case 'removeBreakPoint':
       chrome.runtime.sendMessage(

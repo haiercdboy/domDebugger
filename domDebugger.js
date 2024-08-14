@@ -15,25 +15,43 @@ chrome.runtime.onInstalled.addListener(function () {
     contexts,
   });
   chrome.contextMenus.create({
-    title: '检测右键节点事件',
-    id: 'viewListeners',
-    parentId,
-    contexts,
-  });
-  chrome.contextMenus.create({
-    title: '右键节点开启断点',
+    title: '右键Dom: 开启断点',
     id: 'addBreakPoint',
     parentId,
     contexts,
   });
   chrome.contextMenus.create({
-    title: '选中节点开启断点',
+    title: '右键Dom: 检测事件',
+    id: 'viewListeners',
+    parentId,
+    contexts,
+  });
+  chrome.contextMenus.create({
+    type: 'separator',
+    id: 'separator1',
+    parentId,
+    contexts,
+  });
+  chrome.contextMenus.create({
+    title: '选中Dom: 开启断点',
     id: 'addBreakPointOnElement',
     parentId,
     contexts,
   });
   chrome.contextMenus.create({
-    title: '取消所有节点断点',
+    title: '选中Dom: 检测事件',
+    id: 'viewListenersOnElement',
+    parentId,
+    contexts,
+  });
+  chrome.contextMenus.create({
+    type: 'separator',
+    id: 'separator2',
+    parentId,
+    contexts,
+  });
+  chrome.contextMenus.create({
+    title: '取消Dom断点',
     id: 'removeBreakPoint',
     parentId,
     contexts,
