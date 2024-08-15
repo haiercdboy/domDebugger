@@ -1,5 +1,5 @@
 const generateId = () => Math.floor(Math.random() * 0xffffff).toString(16);
-const getListeners = (node, unAddBreakPoint) => {
+const getListeners = (node, addBreakPoint) => {
   return new Promise((resolve, reject) => {
     let isElementNode = typeof node === 'string';
     let nodeId;
@@ -12,7 +12,7 @@ const getListeners = (node, unAddBreakPoint) => {
     }
 
     chrome.runtime.sendMessage(
-      { action: 'getNodeListeners', node: isElementNode ? node : nodeId, unAddBreakPoint, isElementNode },
+      { action: 'getNodeListeners', node: isElementNode ? node : nodeId, addBreakPoint, isElementNode },
       (response) => {
         genId && node.removeAttribute('id');
         response?.isException ? reject(response) : resolve(response);
@@ -29,29 +29,29 @@ const log = (msg, ...options) => {
     ...options,
   );
 }
-const findListeners = async (node, unAddBreakPoint) => {
+const findListeners = async (node, addBreakPoint) => {
   let isElementNode = typeof node === 'string';
   if (!node || node.nodeName === 'BODY' || node.nodeName === 'HTML') {
     log('0 listener found');
     return;
   }
 
-  const listeners = await getListeners(node, unAddBreakPoint);
+  const listeners = await getListeners(node, addBreakPoint);
   // 在body内（不含）逐层往上查找
   if (!listeners?.length) {
     if (!isElementNode) {
-      return findListeners(node.parentNode, unAddBreakPoint);
+      return findListeners(node.parentNode, addBreakPoint);
     }
     log('0 listener found');
   } else if (listeners.length) {
     let nodeName = isElementNode ? node : node.nodeName;
-    unAddBreakPoint
-      ? log(
+    addBreakPoint
+      ? log(`Breakpoint added to '${nodeName}' on '${listeners}' event`)
+      : log(
         `${listeners.length} ${listeners.length > 1 ? 'events' : 'event'} found on ${nodeName}`,
         listeners,
         node,
-      )
-      : log(`Breakpoint added to '${nodeName}' on '${listeners}' event`);
+      );
   }
 };
 
@@ -63,24 +63,24 @@ document.addEventListener("contextmenu", function (event) {
 chrome.runtime.onMessage.addListener(function (request) {
   switch (request.action) {
     case 'addBreakPoint':
-      findListeners(lastTarget);
-      break;
-    case 'viewListeners':
       findListeners(lastTarget, true);
       break;
+    case 'viewListeners':
+      findListeners(lastTarget);
+      break;
     case 'addBreakPointOnElement':
-      findListeners('$0');
+      findListeners('$0', true);
       break;
     case 'viewListenersOnElement':
-      findListeners('$0', true);
+      findListeners('$0');
       break;
     case 'removeBreakPoint':
       chrome.runtime.sendMessage(
         { action: 'removeBreakPoint' },
         response => {
-          let msg = response.length > 1
-            ? `${response.length} breakpoints have removed`
-            : `${response.length} breakpoint has removed`; 
+          let msg = response?.length > 1
+            ? `${response.length} breakpoints have been removed`
+            : `${response?.length ?? 0} breakpoint has been removed`;
           log(msg);
         }
       );

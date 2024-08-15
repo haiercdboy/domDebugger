@@ -1,73 +1,117 @@
-if (!chrome.runtime.inited) {
-  chrome.runtime.inited = true;
-
+const log = function (msg) {
   chrome.devtools.inspectedWindow.eval(
     `
-      let _debug__undebugs = [];
+      console.log('${msg}');
     `
   );
-  function getListeners(node, unAddBreakPoint, isElementNode) {
-    return new Promise((resolve, reject) => {
-      chrome.devtools.inspectedWindow.eval(
-        `
-          var _debug__node;
-          var _debug__listeners;
-          var _debug__keys;
-          var _debug__unAddBreakPoint;
-          // console.log('dom debugger node', '${node}');
-          _debug__node = ${isElementNode} ? ${node} : document.getElementById('${node}');
-          if (_debug__node) {
-            _debug__listeners = getEventListeners(_debug__node);
-            _debug__keys = _debug__listeners ? Object.keys(_debug__listeners) : [];
-            _debug__unAddBreakPoint = ${unAddBreakPoint};
-            !_debug__unAddBreakPoint && _debug__keys.forEach(evt => {
-              let fn;
-              let last;
-              _debug__listeners[evt].forEach(item => {
-                fn = fn || item.listener.value || item.listener.listener?.listener;
-                last = item;
-              });
-              fn = fn || last.listener;
-              debug(fn);
-              _debug__undebugs.push(() => undebug(fn));
-            });
-          }
-          // console.log('dom debugger _debug__keys', _debug__keys, _debug__node);
-          _debug__keys
-        `,
-        (result, isException) => {
-          isException ? reject(isException) : resolve(result);
-        }
-      );
+}
+
+let curTabId;
+chrome.runtime.sendMessage({ type: "GET_TAB_ID" }, function(response) {
+  curTabId = response.tabId;
+});
+
+// eval scripts;
+const evalScript = function (node, addBreakPoint, isElementNode) {
+  let undebugs = window._debug__undebugs ?? [];
+  // console.log('dom debugger params', node, addBreakPoint, isElementNode);
+  // 仅对以下事件加断点
+  const listenerSchedule = [
+    'click',
+    'dblclick',
+    // 'mousedown',
+    // 'mouseup',
+    // 'mousemove',
+    // 'mouseover',
+    // 'mouseout',
+    // 'mouseenter',
+    // 'mouseleave',
+    'keydown',
+    'keyup',
+    'keypress',
+    'submit',
+    'reset',
+    'focus',
+    'blur',
+    'change',
+    'select',
+    'contextmenu',
+    // 'drag',
+    'dragstart',
+    'dragend',
+    'dragover',
+    'drop',
+    'transitionend',
+    'animationend',
+  ];
+  node = isElementNode ? (new Function(`return ${node}`))() : document.getElementById(node);
+  if (!node) {
+    return [];
+  }
+  
+  let listeners = getEventListeners(node);
+  let keys = listeners ? Object.keys(listeners) : [];
+  if (addBreakPoint && keys.length) {
+    listenerSchedule.forEach(evt => {
+      listeners[evt]?.forEach(l => {
+        let h = l.listener.value || l.listener.listener?.listener || l.listener;
+        debug(h);
+        undebugs.push(() => undebug(h));
+      });
     });
   }
+  window._debug__undebugs = undebugs;
+  // console.log('dom debugger', keys, listeners, undebugs);
+  return keys;
+}
 
-  chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    switch (request.action) {
-      case 'getNodeListeners':
-        const node = request.node;
-        const unAddBreakPoint = request.unAddBreakPoint;
-        const isElementNode = request.isElementNode;
-        getListeners(node, unAddBreakPoint, isElementNode)
-          .then((listeners) => {
-            sendResponse(listeners ?? []);
-          })
-          .catch(err => {
-            sendResponse(err);
-          });
-        break;
-      case 'removeBreakPoint':
-        chrome.devtools.inspectedWindow.eval(
-          `
-            var _debug__keys = new Array(_debug__undebugs.length);
-            // console.log('dom debugger _debug__keys', _debug__keys, _debug__undebugs);
-            _debug__undebugs.forEach(cancel => cancel());
-            _debug__undebugs = [];
-            _debug__keys ?? []
-          `,
-          sendResponse,
-        );
-    }
-    return true;
+// eval scripts;
+const removeBreaks = function () {
+  let undebugs = window._debug__undebugs ?? [];
+  let keys = new Array(undebugs.length);
+  // console.log('dom debugger keys', keys, undebugs);
+  undebugs.forEach(cancel => cancel());
+  undebugs.length = 0;
+  window._debug__undebugs = undebugs;
+  return keys ?? [];
+}
+
+const getListeners = function (node, addBreakPoint, isElementNode) {
+  return new Promise((resolve, reject) => {
+    chrome.devtools.inspectedWindow.eval(
+      `
+        (${evalScript.toString()})('${node}', ${addBreakPoint}, ${isElementNode})
+      `,
+      (result, isException) => {
+        isException ? reject(isException) : resolve(result);
+      }
+    );
   });
 }
+
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+  const tabId = sender.tab?.id;
+  if (tabId && curTabId !== tabId) {
+    return;
+  }
+  switch (request.action) {
+    case 'getNodeListeners':
+      const node = request.node;
+      const addBreakPoint = request.addBreakPoint;
+      const isElementNode = request.isElementNode;
+      getListeners(node, addBreakPoint, isElementNode, tabId)
+        .then((listeners) => {
+          sendResponse(listeners ?? []);
+        })
+        .catch(err => {
+          sendResponse(err);
+        });
+      break;
+    case 'removeBreakPoint':
+      chrome.devtools.inspectedWindow.eval(
+        `(${removeBreaks.toString()})()`,
+        sendResponse
+      );
+  }
+  return true;
+});

@@ -63,3 +63,15 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     action: info.menuItemId,
   });
 });
+
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.type === "GET_TAB_ID") {
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+      const activeTab = tabs[0];
+      if (activeTab) {
+        sendResponse({ tabId: activeTab.id });
+      }
+    });
+    return true;
+  }
+});
