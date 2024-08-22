@@ -1,5 +1,5 @@
 {
-  "name": "Dom Debugger",
+  "name": "domDebugger",
   "description": "add breakpoint to the dom listeners",
   "version": "0.1.0",
   "permissions": ["activeTab", "contextMenus", "scripting"],

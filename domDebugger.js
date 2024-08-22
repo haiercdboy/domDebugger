@@ -10,7 +10,7 @@ const contexts = [
 
 chrome.runtime.onInstalled.addListener(function () {
   const parentId = chrome.contextMenus.create({
-    title: 'Dom Debugger',
+    title: 'domDebugger',
     id: 'BreakPoint',
     contexts,
   });
